@@ -12,6 +12,14 @@ opts = Optimist.options do
 
   Counts unique entries per column in a text file.
 
+  Sorting
+  -------
+
+  Here are the accepted options for sorting.
+
+  1. By observation name, then count.
+  2. By count (reversed), then observation name.
+
   Options:
   EOS
 
@@ -21,6 +29,9 @@ opts = Optimist.options do
   opt(:delimiter,
       "Column separator (can be multiple chars)",
       default: "\t")
+  opt(:sort,
+      "How to sort?  See --help.",
+      default: 1)
   opt(:first_line_is_header,
       "Pass this to specify first line is a header line")
 end
@@ -32,8 +43,14 @@ abort_unless opts[:infile_given],
 abort_unless File.exist?(opts[:infile]),
              "#{opts[:infile]} does not exist.  Try --help for help."
 
+ACCEPTED_SORT_OPTS = [1, 2]
+abort_unless ACCEPTED_SORT_OPTS.include?(opts[:sort]),
+             "--sort must be one of #{ACCEPTED_SORT_OPTS.join(", ")}." \
+             "  Try --help for help."
+
 infile = opts[:infile]
 delimiter = opts[:delimiter]
+sort_by = opts[:sort]
 first_line_is_header = opts[:first_line_is_header]
 
 summary = []
@@ -85,11 +102,14 @@ results = Array.new(nrows) { Array.new(ncols) }
 summary.each_with_index do |count_table, summary_idx|
   max_data_count_length[summary_idx] = -1
 
-  count_table.
-    # Sort first by reversed count then by token
-    sort_by { |token, count| [-count, token] }.
-    each_with_index do |(token, count), token_idx|
+  sorted_count_table =
+    if sort_by == 1
+      count_table.sort_by { |token, count| [token, count] }
+    elsif sort_by == 2
+      count_table.sort_by { |token, count| [-count, token] }
+    end
 
+  sorted_count_table.each_with_index do |(token, count), token_idx|
     if token.length > max_data_token_length[summary_idx]
       max_data_token_length[summary_idx] = token.length
     end
