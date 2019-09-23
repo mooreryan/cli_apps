@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+Signal.trap("PIPE", "EXIT")
+
+require "abort_if"
+require "optimist"
+
+include AbortIf
+
+opts = Optimist.options do
+  banner <<-EOS
+
+  Prints column names.
+
+  Options:
+  EOS
+
+  opt(:delimiter,
+      "Column separator (can be multiple chars)",
+      default: "\t")
+end
+
+ARGF.each do |line|
+  line.
+    chomp.
+    split(opts[:delimiter]).
+    each_with_index do |token, idx|
+
+    puts [idx + 1, token].join "\t"
+  end
+
+  break
+end
