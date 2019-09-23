@@ -1,0 +1,4 @@
+Name	Favorite Fruit	Favorite Color
+Ryan	Pear	Green
+Amelia	Apple	Blue
+Prasanna	Apple	Green

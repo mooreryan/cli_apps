@@ -1,0 +1,151 @@
+#!/usr/bin/env ruby
+
+Signal.trap("PIPE", "EXIT")
+
+require "abort_if"
+require "optimist"
+
+include AbortIf
+
+opts = Optimist.options do
+  banner <<-EOS
+
+  Counts unique entries per column in a text file.
+
+  Options:
+  EOS
+
+  opt(:infile,
+      "Input file",
+      type: :string)
+  opt(:delimiter,
+      "Column separator (can be multiple chars)",
+      default: "\t")
+  opt(:first_line_is_header,
+      "Pass this to specify first line is a header line")
+end
+
+# Handle infile arg
+abort_unless opts[:infile_given],
+             "--infile is a required argument.  Try --help for help."
+
+abort_unless File.exist?(opts[:infile]),
+             "#{opts[:infile]} does not exist.  Try --help for help."
+
+infile = opts[:infile]
+delimiter = opts[:delimiter]
+first_line_is_header = opts[:first_line_is_header]
+
+summary = []
+header = nil
+
+# Used to track the max token lenght so the columns can all be the
+# same width.
+header_token_length = []
+
+File.open(infile, "rt").each_line.with_index do |line, idx|
+  ary = line.chomp.split delimiter
+
+  if idx.zero?
+    header = ary
+
+    ary.each_with_index do |token, idx|
+      summary[idx] = Hash.new 0
+
+      if first_line_is_header
+        header_token_length[idx] = token.length
+      else
+        header_token_length[idx] = "Column #{idx + 1}".length
+        summary[idx][token] += 1
+      end
+    end
+  else
+    ary.each_with_index do |token, idx|
+      summary[idx][token] += 1
+    end
+  end
+end
+
+max_data_token_length = Array.new summary.count, -1
+max_data_count_length = []
+
+# Go through and see how many "lines" are in each count table.
+count_table_lines = Hash.new 0
+summary.each_with_index do |count_table, idx|
+  count_table_lines[idx] += count_table.count
+end
+
+# Now make a 2D array to hold the results.
+nrows = count_table_lines.values.max
+ncols = summary.count
+results = Array.new(nrows) { Array.new(ncols) }
+
+# Fill the results array.  Also, track the size of each element in the
+# results table.  Also, track the max token and count length.
+summary.each_with_index do |count_table, summary_idx|
+  max_data_count_length[summary_idx] = -1
+
+  count_table.
+    # Sort first by reversed count then by token
+    sort_by { |token, count| [-count, token] }.
+    each_with_index do |(token, count), token_idx|
+
+    if token.length > max_data_token_length[summary_idx]
+      max_data_token_length[summary_idx] = token.length
+    end
+
+    if count.to_s.length > max_data_count_length[summary_idx]
+      max_data_count_length[summary_idx] = count.to_s.length
+    end
+
+    results[token_idx][summary_idx] = [token, count]
+  end
+end
+
+
+new_header = []
+separator = []
+column_width = []
+
+header.length.times.map do |idx|
+  if first_line_is_header
+    header_token = header[idx]
+  else
+    header_token = "Column #{idx + 1}"
+  end
+
+  data_token_width = max_data_token_length[idx]
+  data_count_width = max_data_count_length[idx]
+
+  # Add 1 for the " " that will separate tokens from their counts.
+  if header_token.length > data_token_width + data_count_width + 1
+    column_width[idx] = header_token.length
+  else
+    column_width[idx] = data_token_width + data_count_width + 1
+  end
+
+  new_header << sprintf("%-#{column_width[idx]}.#{column_width[idx]}s",
+                        header_token)
+  separator << "-" * column_width[idx]
+end
+
+puts new_header.join " | "
+puts separator.join "-|-"
+
+results.each_with_index do |line, row_idx|
+  line_str = line.map.with_index do |(token, count), col_idx|
+
+    data_token_width = max_data_token_length[col_idx]
+    data_count_width = max_data_count_length[col_idx]
+
+    tmp = sprintf("%-#{data_count_width}.#{data_count_width}s " \
+                  "%-#{data_token_width}.#{data_token_width}s",
+                  count,
+                  token)
+
+    sprintf "%-#{column_width[col_idx]}.#{column_width[col_idx]}s",
+            tmp
+  end
+
+  puts line_str.join " | "
+end
