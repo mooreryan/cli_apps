@@ -12,6 +12,8 @@ opts = Optimist.options do
 
   Counts unique entries per column in a text file.
 
+  usage: #{__FILE__} [-d delimiter] [-s sort] [-f] infile.txt
+
   Sorting
   -------
 
@@ -23,9 +25,6 @@ opts = Optimist.options do
   Options:
   EOS
 
-  opt(:infile,
-      "Input file",
-      type: :string)
   opt(:delimiter,
       "Column separator (can be multiple chars)",
       default: "\t")
@@ -36,19 +35,15 @@ opts = Optimist.options do
       "Pass this to specify first line is a header line")
 end
 
-# Handle infile arg
-abort_unless opts[:infile_given],
-             "--infile is a required argument.  Try --help for help."
-
-abort_unless File.exist?(opts[:infile]),
-             "#{opts[:infile]} does not exist.  Try --help for help."
-
 ACCEPTED_SORT_OPTS = [1, 2]
 abort_unless ACCEPTED_SORT_OPTS.include?(opts[:sort]),
              "--sort must be one of #{ACCEPTED_SORT_OPTS.join(", ")}." \
              "  Try --help for help."
 
-infile = opts[:infile]
+# infile = ARGV.first
+# abort_unless File.exist?(infile),
+#              "#{infile} does not exist!  Try --help for help."
+
 delimiter = opts[:delimiter]
 sort_by = opts[:sort]
 first_line_is_header = opts[:first_line_is_header]
@@ -60,7 +55,8 @@ header = nil
 # same width.
 header_token_length = []
 
-File.open(infile, "rt").each_line.with_index do |line, idx|
+# File.open(infile, "rt").each_line.with_index do |line, idx|
+ARGF.each_with_index do |line, idx|
   ary = line.chomp.split delimiter
 
   if idx.zero?
