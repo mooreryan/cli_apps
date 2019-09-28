@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+
+Signal.trap("PIPE", "EXIT")
+
+require "abort_if"
+require "optimist"
+
+include AbortIf
+include AbortIf::Assert
+
+opts = Optimist.options do
+  banner <<-EOS
+
+  Count the number of columns.
+
+  If not all rows have the same length, then the number of times each
+  number of columns occurs will be shown.
+
+  Options:
+  EOS
+
+  opt(:delimiter,
+      "Column separator (can be multiple chars)",
+      default: "\t")
+end
+
+delimiter = opts[:delimiter]
+
+counts = Hash.new 0
+File.open(ARGV.first, "rt").each_line.with_index do |line, idx|
+  $stderr.printf("READING -- #{idx}\r") if (idx % 100_000).zero?
+
+  counts[line.chomp.split(delimiter).count] += 1
+end
+
+puts %w[nrows count].join "\t"
+counts.sort.each do |nrows, count|
+  puts [nrows, count].join "\t"
+end
