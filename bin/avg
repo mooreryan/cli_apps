@@ -1,0 +1,17 @@
+#!/bin/bash
+
+awk '
+BEGIN {
+  count = 0
+  sum = 0
+}
+
+$0 != "" {
+  count += 1
+  sum += $1
+}
+
+END {
+  mean = sum / count
+  printf("Sum: %d, Count: %d, Avg: %.4f\n", sum, count, mean)
+}'
