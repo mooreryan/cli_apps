@@ -1,2 +1,5 @@
 .DS_Store
 .Rhistory
+
+test_files/*.name_map.txt
+test_files/*.simple_headers.fa

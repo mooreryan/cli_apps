@@ -1,0 +1,42 @@
+#!/usr/bin/env ruby
+Signal.trap("PIPE", "EXIT")
+
+require "abort_if"
+require "parse_fasta"
+
+include AbortIf
+
+abort_unless ARGV.count == 2,
+             "usage: simple_headers annotation seqs.fa"
+
+annotation = ARGV[0]
+seqs_f = ARGV[1]
+
+seqnum = 0
+name_map = {}
+
+fname_no_zip_ext = seqs_f.sub(/.gz$/, "").sub(/.bz2$/, "")
+
+extname = File.extname fname_no_zip_ext
+basename = File.basename fname_no_zip_ext, extname
+dirname = File.dirname fname_no_zip_ext
+
+name_map_fname =
+  File.join dirname, "#{basename}.name_map.txt"
+
+simple_headers_fname =
+  File.join dirname, "#{basename}.simple_headers.fa"
+
+File.open(name_map_fname, "w") do |name_map_f|
+  File.open(simple_headers_fname, "w") do |simple_headers_f|
+    ParseFasta::SeqFile.open(seqs_f).each_record do |rec|
+      seqnum += 1
+      new_header = "#{annotation}___seq_#{seqnum}"
+
+      name_map[new_header] = rec.header
+
+      name_map_f.puts [new_header, rec.header].join "\t"
+      simple_headers_f.puts ">#{new_header}\n#{rec.seq}"
+    end
+  end
+end
